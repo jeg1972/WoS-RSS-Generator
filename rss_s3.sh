@@ -1,39 +1,66 @@
 #!/bin/sh
 
+##############################################
+# Wonder Of Stuff RSS Generator and Uploader #
+##############################################
+# Version 0.1 - John Gardner                 #
+# Version 0.2 - John Gardner                 #
+##############################################
+# This script expects that the YouTube video #
+# has been converted to MP3 by using the     #
+# service: http://www.listentoyoutube.com    #
+##############################################
+# This script will ask the user for info     #
+# about the latest Vodcast, update the text  #
+# db, create the RSS feed and upload it all  #'
+# to an AWS S3 bucket.                       #
+# In order to make this work you only need to#
+# specify the following variables;           #
+# FLAT_DB - Path to text based DB file       #
+# OUTPUT - Path and name of RSS XML file out #
+# MP3_PATH - Path of MP3 file to upload      #    
+############################################## 
+
+# Variables to be configured on first run
 FLAT_DB=./rss_s3_db
 OUTPUT=wonderofstuff_rss.xml
 MP3_PATH=/home/johnga/Downloads/
+BUCKET=s3://wonderofstuff/
 TDATE=$(date +%a", "%d" "%b" "%Y" "%H":"%M":"%S" "%z)
 
-clear
+# Input all the details of the Vodcast
+details() {
+	rm -f /tmp/dbfile
 
-echo "WONDER OF STUFF RSS GENERATOR"
-echo "============================="
-echo ""
+	clear
 
-rm -f /tmp/newfile
-echo "What is the title of the Vodcast?\n"
+	echo "WONDER OF STUFF RSS GENERATOR"
+	echo "============================="
+	echo ""
 
-read TITLE
-echo ""
+	echo "What is the title of the Vodcast?\n"
 
-echo "What is the name of the MP3 file?\n"
+	read TITLE
+	echo ""
 
-read FILENAME
-echo ""
+	echo "What is the name of the MP3 file?\n"
 
-FILENAME=$( printf "%s\n" "$FILENAME" | sed 's/ /%20/g' )
+	read FILENAME
+	echo ""
 
-echo $TITLE";"$FILENAME";"$TDATE >> /tmp/newfile
-cat $FLAT_DB >> /tmp/newfile
-cp /tmp/newfile $FLAT_DB
+	FILENAME=$( printf "%s\n" "$FILENAME" | sed 's/ /%20/g' )
 
-#echo $TITLE,$FILENAME >> $FLAT_DB
+	echo $TITLE";"$FILENAME";"$TDATE >> /tmp/dbfile
+	cat $FLAT_DB >> /tmp/dbfile
+	cp /tmp/dbfile $FLAT_DB
+}
 
+# Generate the RSS XML File
+generate() {
 rm -f $OUTPUT
 cat <<SOURCE >> $OUTPUT
 <rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
-<channel>
+	<channel>
 <atom:link href="http://wonderofstuff.s3-website-eu-west-1.amazonaws.com/wonderofstuff_rss.xml" rel="self" type="application/rss+xml" />
 <title>The Wonder Of Stuff</title>
 <description>Vodcast about Science, Engineering and Technology and anything else we find interesting.</description>
@@ -103,6 +130,14 @@ cat <<SOURCE >> $OUTPUT
 </rss>
 
 SOURCE
+}
 
-#aws s3 cp $OUTPUT s3://wonderofstuff/
-#aws s3 cp $FLAT_DB s3://wonderofstuff/
+# Upload to AWS S3 Bucket
+upload() {
+	aws s3 cp $OUTPUT $BUCKET
+	aws s3 cp $FLAT_DB $BUCKET
+}
+
+#details
+#generate
+upload
